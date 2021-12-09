@@ -1,5 +1,4 @@
 # forte-DI
 
-一个基于Kotlin多平台的依赖管理库。
+一个基于 ~~Kotlin多平台~~ Kotlin/JVM 的依赖管理库, 使用 [JSR 330](https://www.jcp.org/en/jsr/detail?id=330) 下的标准内容进行定义。
 
-尚未考虑好是否仅提供API, 然后对接各种第三方库，还是怎么样的。
