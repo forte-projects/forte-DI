@@ -21,6 +21,7 @@ subprojects {
 
 dependencies {
     api("javax.inject:javax.inject:1")
+    testImplementation("org.springframework.boot:spring-boot-autoconfigure:2.5.7")
 }
 
 kotlin {

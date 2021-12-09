@@ -1,6 +1,7 @@
 package love.forte.common.di
 
 import kotlin.reflect.KClass
+import kotlin.reflect.cast
 
 
 /**
@@ -28,12 +29,33 @@ public interface BeanContainer {
      *
      * @throws NoSuchBeanDefineException 当bean不存在时
      */
-    public operator fun get(name: String): Bean<*>
+    public operator fun get(name: String): Any
 
     /**
-     * 根据 [Bean] 的唯一名称得到其结果, 或者得到null。
+     * 根据的唯一限定0名称得到其结果, 或者得到null。
      */
-    public fun getOrNull(name: String): Bean<*>?
+    public fun getOrNull(name: String): Any?
+
+    /**
+     * 根据 [Bean] 的唯一名称得到其结果。
+     *
+     * @throws NoSuchBeanDefineException 当bean不存在时
+     * @throws ClassCastException 类型不匹配时
+     */
+    public operator fun <T : Any> get(name: String, type: KClass<T>): T = type.cast(this[name])
+
+    /**
+     * 根据的唯一限定0名称得到其结果, 或者得到null。
+     *
+     * @throws ClassCastException 类型不匹配时
+     */
+    public fun <T : Any> getOrNull(name: String, type: KClass<T>): T? = getOrNull(name)?.let(type::cast)
+
+
+    @Api4J
+    public operator fun <T : Any> get(name: String, type: Class<T>): T = type.cast(this[name])
+    @Api4J
+    public fun <T : Any> getOrNull(name: String, type: Class<T>): T? = getOrNull(name)?.let(type::cast)
 
 
     /**
@@ -44,20 +66,21 @@ public interface BeanContainer {
      * @throws NoSuchBeanDefineException 当此类型的bean不存在时
      * @throws MultiSameTypeBeanDefinedException 当此类型的bean存在多个时
      */
-    public operator fun <T : Any> get(type: KClass<T>): Bean<T>
+    public operator fun <T : Any> get(type: KClass<T>): T
 
 
     /**
-     * 根据类型获取此类型下的所有 [Bean]. 当无法找到任何结果的时候，会返回一个空列表。
+     * 根据类型获取此类型下的所有 [Bean] 的名称. 当无法找到任何结果的时候，会返回一个空列表。
      */
-    public fun <T : Any> getAll(type: KClass<T>): List<Bean<T>>
+    public fun <T : Any> getAll(type: KClass<T>): List<String>
 
 
     @Api4J
-    public fun <T : Any> get(type: Class<T>): Bean<T> = this[type.kotlin]
+    public fun <T : Any> get(type: Class<T>): T = this[type.kotlin]
 
     @Api4J
-    public fun <T : Any> getAll(type: Class<T>): List<Bean<T>> = getAll(type.kotlin)
+    public fun <T : Any> getAll(type: Class<T>): List<String> = getAll(type.kotlin)
+
 
 }
 
