@@ -21,6 +21,9 @@ subprojects {
 
 dependencies {
     api(project(":di-api"))
+    compileOnly("org.springframework:spring-context:5.3.9") // component
+    compileOnly("org.springframework:spring-core:5.3.9") // aliasFor
+    compileOnly("org.springframework.boot:spring-boot:2.5.7") // ConfigurationProperties
 }
 
 kotlin {

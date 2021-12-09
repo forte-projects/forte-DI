@@ -21,7 +21,9 @@ subprojects {
 
 dependencies {
     api("javax.inject:javax.inject:1")
-    testImplementation("org.springframework.boot:spring-boot-autoconfigure:2.5.7")
+    compileOnly("org.springframework:spring-context:5.3.9") // component
+    compileOnly("org.springframework:spring-core:5.3.9") // aliasFor
+    compileOnly("org.springframework.boot:spring-boot:2.5.7") // ConfigurationProperties
 }
 
 kotlin {
