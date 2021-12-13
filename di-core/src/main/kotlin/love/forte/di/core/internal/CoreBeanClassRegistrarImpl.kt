@@ -2,14 +2,14 @@ package love.forte.di.core.internal
 
 import love.forte.di.Bean
 import love.forte.di.BeanManager
+import love.forte.di.BeansException
 import love.forte.di.core.CoreBeanClassRegistrar
 import love.forte.di.core.SimpleBean
+import java.util.*
+import java.util.function.Supplier
 import javax.inject.Inject
 import javax.inject.Named
-import kotlin.reflect.KAnnotatedElement
-import kotlin.reflect.KClass
-import kotlin.reflect.KMutableProperty1
-import kotlin.reflect.KParameter
+import kotlin.reflect.*
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.jvm.jvmName
 
@@ -92,12 +92,12 @@ private class SimpleClassDefinition<T : Any>(
     /**
      * bean实例初始化函数。
      */
-    lateinit var initializer: (BeanManager) -> () -> T
+    var initializer: (BeanManager) -> () -> T
 
     /**
      * 通过实例的注入器。
      */
-    lateinit var injector: (BeanManager, T) -> Unit
+    var injector: (BeanManager, T) -> Unit
 
     init {
         // 寻找构造
@@ -120,7 +120,6 @@ private class SimpleClassDefinition<T : Any>(
         }
 
         // 构造
-        val typeParameters = initConstructor.typeParameters
         val parameters = initConstructor.parameters
         val parameterSize = parameters.size
         val annotationGetter = registrar.annotationGetter
@@ -141,52 +140,20 @@ private class SimpleClassDefinition<T : Any>(
             // 是否存在 @Named
             val name = annotationGetter.getAnnotation(p.parameter, Named::class)?.value?.takeIf { it.isNotEmpty() }
             val getter: (BeanManager) -> Any? = if (name != null) {
-                when {
-                    optional -> {
-                        { manager ->
-                            manager.getOrNull(name, p.type) ?: IgnoreMark
-                        }
-                    }
-                    nullable -> {
-                        { manager ->
-                            manager.getOrNull(name, p.type)
-                        }
-                    }
-                    else -> {
-                        { manager ->
-                            manager[name, p.type]
-                        }
-                    }
-                }
+                generateNamedGetterWithSpecialType(name, p.type, p.parameter.type, nullable, optional)
             } else {
                 // no name. use type
-                when {
-                    optional -> {
-                        { manager ->
-                            manager.getOrNull(p.type) ?: IgnoreMark
-                        }
-                    }
-                    nullable -> {
-                        { manager ->
-                            manager.getOrNull(p.type)
-                        }
-                    }
-                    else -> {
-                        { manager ->
-                            manager[p.type]
-                        }
-                    }
-                }
+                generateTypedGetterWithSpecialType(p.type, p.parameter.type, nullable, optional)
             }
 
             return ParameterBinder(parameter, getter)
         }
 
+        fun KParameter.toBinder(): ParameterBinder = toParameterType().toBinder()
+
         //region Initializer init
         // init needed
-        val parameterTypes = parameters.map(KParameter::toParameterType)
-
-        val binderList = parameterTypes.map(ParameterWithType::toBinder)
+        val binderList = parameters.map(KParameter::toBinder)
 
         initializer = i@{ manager ->
             return@i {
@@ -200,23 +167,54 @@ private class SimpleClassDefinition<T : Any>(
         }
         //endregion
 
-
         //region Injector init
-        // 扫描所有的属性, 要有Inject
-        // TODO
+        // 扫描所有的属性, 有Inject的就inject.
         val propertiesInjectorList: List<(BeanManager, T) -> Unit> = type.declaredMemberProperties.filter { prop ->
             annotationGetter.containsAnnotation(prop, Inject::class)
         }.map { prop ->
+
             if (prop is KMutableProperty1) {
-                TODO()
+                val returnType = prop.returnType
+                val propType = prop.returnType.classifier as? KClass<*> ?: throw IllegalStateException("Unable to confirm property type $prop")
+
+                @Suppress("UNCHECKED_CAST")
+                prop as KMutableProperty1<T, Any?>
+
+                val name = annotationGetter.getAnnotation(prop, Named::class)?.value
+                val nullable = returnType.isMarkedNullable
+
+                val getter = if (name != null) {
+                    generateNamedGetterWithSpecialType(name, propType, returnType, nullable, false)
+                } else {
+                    generateTypedGetterWithSpecialType(propType, returnType, nullable, false)
+                }
+
+                if (nullable) {
+                    { manager, instance ->
+                        prop.set(instance, getter(manager))
+                    }
+                } else {
+                    { manager, instance ->
+                        val value = getter(manager)
+                        if (value != null) {
+                            prop.set(instance, value)
+                        } else throw BeansException("Inject for property $prop value was null")
+                    }
+                }
 
             } else {
-                throw IllegalStateException("Property must be mutable.")
+                throw BeansException("Property must be mutable.")
             }
         }
 
-        injector = TODO()
+        injector = { manager, instance ->
+            for (func in propertiesInjectorList) {
+                func(manager, instance)
+            }
+        }
         //endregion
+
+
     }
 
 
@@ -225,6 +223,335 @@ private class SimpleClassDefinition<T : Any>(
     }
 
     override val name: String = type.qualifiedName ?: type.jvmName
+}
+
+
+private fun generateNamedGetterWithSpecialType(
+    name: String, type: KClass<*>, kType: KType, nullable: Boolean, optional: Boolean
+): (BeanManager) -> Any? {
+    return when (type.qualifiedName) {
+        "java.util.Optional" -> {
+            val first = kType.arguments.first()
+            first.type
+            val opType = first.type?.classifier as? KClass<*>
+                ?: throw BeansException("Unable to determine the type in Optional<$first>")
+
+            when {
+                optional -> {
+                    { manager ->
+                        manager.getOrNull(name, opType)?.let { Optional.of(it) } ?: IgnoreMark
+                    }
+                }
+                // always nullable.
+                else -> {
+                    { manager ->
+                        Optional.ofNullable(manager.getOrNull(name, opType))
+                    }
+                }
+            }
+        }
+
+        "kotlin.Function0" -> {
+            val first = kType.arguments.first()
+            val firstType = first.type!!
+            val fun0Type = firstType.classifier as? KClass<*>
+                ?: throw BeansException("Unable to determine the type in () -> $first")
+            val resultNullable = firstType.isMarkedNullable
+
+            when {
+                optional -> {
+                    if (resultNullable) {
+                        { manager ->
+                            val func0: () -> Any? = {
+                                manager.getOrNull(name, fun0Type)
+                            }
+                            func0
+                        }
+                    } else {
+                        // result not null
+                        { manager ->
+                            val func0: (() -> Any)? = if (name in manager) {
+                                {
+                                    manager[name, fun0Type]
+                                }
+                            } else null
+
+                            func0 ?: IgnoreMark
+                        }
+                    }
+                }
+                nullable -> {
+                    if (resultNullable) {
+                        { manager ->
+                            val func0: () -> Any? = {
+                                manager.getOrNull(name, fun0Type)
+                            }
+                            func0
+                        }
+                    } else {
+                        { manager ->
+                            val func0: (() -> Any)? = if (name in manager) {
+                                {
+                                    manager[name, fun0Type]
+                                }
+                            } else null
+                            func0
+                        }
+                    }
+                }
+                else -> {
+                    { manager ->
+                        val func0: () -> Any = {
+                            manager[name, fun0Type]
+                        }
+                        func0
+                    }
+                }
+            }
+        }
+
+        "java.util.function.Supplier" -> {
+            val first = kType.arguments.first()
+            val firstType = first.type!!
+            val supplierType = firstType.classifier as? KClass<*>
+                ?: throw BeansException("Unable to determine the type in Supplier<$first>")
+            val resultNullable = firstType.isMarkedNullable
+
+            when {
+                optional -> {
+                    if (resultNullable) {
+                        { manager ->
+                            val func0: Supplier<Any?> = Supplier {
+                                manager.getOrNull(name, supplierType)
+                            }
+                            func0
+                        }
+                    } else {
+                        // result not null
+                        { manager ->
+                            val func0: Supplier<Any>? = if (name in manager) {
+                                Supplier {
+                                    manager[name, supplierType]
+                                }
+                            } else null
+
+                            func0 ?: IgnoreMark
+                        }
+                    }
+                }
+                nullable -> {
+                    if (resultNullable) {
+                        { manager ->
+                            val func0: Supplier<Any?> = Supplier {
+                                manager.getOrNull(name, supplierType)
+                            }
+                            func0
+                        }
+                    } else {
+                        { manager ->
+                            val func0: (Supplier<Any>)? = if (name in manager) {
+                                Supplier {
+                                    manager[name, supplierType]
+                                }
+                            } else null
+                            func0
+                        }
+                    }
+                }
+                else -> {
+                    { manager ->
+                        val func0: Supplier<Any> = Supplier {
+                            manager[name, supplierType]
+                        }
+                        func0
+                    }
+                }
+            }
+        }
+
+        else -> when {
+            optional -> {
+                { manager ->
+                    manager.getOrNull(name, type) ?: IgnoreMark
+                }
+            }
+            nullable -> {
+                { manager ->
+                    manager.getOrNull(name, type)
+                }
+            }
+            else -> {
+                { manager ->
+                    manager[name, type]
+                }
+            }
+        }
+    }
+}
+
+private fun generateTypedGetterWithSpecialType(
+    type: KClass<*>, kType: KType, nullable: Boolean, optional: Boolean
+): (BeanManager) -> Any? {
+    return when (type.qualifiedName) {
+        "java.util.Optional" -> {
+            val first = kType.arguments.first()
+            first.type
+            val opType = first.type?.classifier as? KClass<*>
+                ?: throw BeansException("Unable to determine the type in Optional<$first>")
+
+            when {
+                optional -> {
+                    { manager ->
+                        manager.getOrNull(opType)?.let { Optional.of(it) } ?: IgnoreMark
+                    }
+                }
+                // always nullable.
+                else -> {
+                    { manager ->
+                        Optional.ofNullable(manager.getOrNull(opType))
+                    }
+                }
+            }
+        }
+
+        "kotlin.Function0" -> {
+            val first = kType.arguments.first()
+            val firstType = first.type!!
+            val fun0Type = firstType.classifier as? KClass<*>
+                ?: throw BeansException("Unable to determine the type in () -> $first")
+            val resultNullable = firstType.isMarkedNullable
+
+            when {
+                optional -> {
+                    if (resultNullable) {
+                        { manager ->
+                            val func0: () -> Any? = {
+                                manager.getOrNull(fun0Type)
+                            }
+                            func0
+                        }
+                    } else {
+                        // result not null
+                        { manager ->
+
+                            val func0: (() -> Any)? = if (manager.getOrNull(fun0Type) != null) {
+                                {
+                                    manager[fun0Type]
+                                }
+                            } else null
+
+                            func0 ?: IgnoreMark
+                        }
+                    }
+                }
+                nullable -> {
+                    if (resultNullable) {
+                        { manager ->
+                            val func0: () -> Any? = {
+                                manager.getOrNull(fun0Type)
+                            }
+                            func0
+                        }
+                    } else {
+                        { manager ->
+                            val func0: (() -> Any)? = if (manager.getOrNull(fun0Type) != null) {
+                                {
+                                    manager[fun0Type]
+                                }
+                            } else null
+                            func0
+                        }
+                    }
+                }
+                else -> {
+                    { manager ->
+                        val func0: () -> Any = {
+                            manager[fun0Type]
+                        }
+                        func0
+                    }
+                }
+            }
+        }
+
+        "java.util.function.Supplier" -> {
+            val first = kType.arguments.first()
+            val firstType = first.type!!
+            val supplierType = firstType.classifier as? KClass<*>
+                ?: throw BeansException("Unable to determine the type in Supplier<$first>")
+            val resultNullable = firstType.isMarkedNullable
+
+            when {
+                optional -> {
+                    if (resultNullable) {
+                        { manager ->
+                            val func0: Supplier<Any?> = Supplier {
+                                manager.getOrNull(supplierType)
+                            }
+                            func0
+                        }
+                    } else {
+                        // result not null
+                        { manager ->
+                            val func0: Supplier<Any>? = if (manager.getOrNull(supplierType) != null) {
+                                Supplier {
+                                    manager[supplierType]
+                                }
+                            } else null
+
+                            func0 ?: IgnoreMark
+                        }
+                    }
+                }
+                nullable -> {
+                    if (resultNullable) {
+                        { manager ->
+                            val func0: Supplier<Any?> = Supplier {
+                                manager.getOrNull(supplierType)
+                            }
+                            func0
+                        }
+                    } else {
+                        { manager ->
+                            val func0: (Supplier<Any>)? = if (manager.getOrNull(supplierType) != null) {
+                                Supplier {
+                                    manager[supplierType]
+                                }
+                            } else null
+                            func0
+                        }
+                    }
+                }
+                else -> {
+                    { manager ->
+                        val func0: Supplier<Any> = Supplier {
+                            manager[supplierType]
+                        }
+                        func0
+                    }
+                }
+            }
+        }
+
+        else -> when {
+            optional -> {
+                { manager ->
+                    manager.getOrNull(type) ?: IgnoreMark
+                }
+            }
+            nullable -> {
+                { manager ->
+                    manager.getOrNull(type)
+                }
+            }
+            else -> {
+                { manager ->
+                    manager[type]
+                }
+            }
+        }
+    }
+
 }
 
 
