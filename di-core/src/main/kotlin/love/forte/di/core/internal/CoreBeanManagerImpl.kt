@@ -22,8 +22,8 @@ import kotlin.reflect.full.isSubclassOf
  * @param parentContainer 父容器。任何获取与注册检测都会优先使用父容器。
  */
 internal class CoreBeanManagerImpl(
+    override val parentContainer: BeanContainer = BeanContainer,
     processorList: List<CoreBeanManagerBeanRegisterPostProcessor>,
-    override val parentContainer: BeanContainer = BeanContainer
 ) : CoreBeanManager, HierarchicalBeanContainer {
     private val processors = processorList.sorted()
 

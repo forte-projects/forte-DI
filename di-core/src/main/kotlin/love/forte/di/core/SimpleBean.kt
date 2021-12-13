@@ -21,10 +21,18 @@ public class SimpleBeanBuilder<T : Any>(
     @SimpleBeanBuilderDSL
     public var isPreferred: Boolean = false
 
+    @SimpleBeanBuilderDSL
+    public var isSingleton: Boolean = true
+
 
     @SimpleBeanBuilderDSL
     public fun preferred(): SimpleBeanBuilder<T> = also {
         isPreferred = true
+    }
+
+    @SimpleBeanBuilderDSL
+    public fun singleton(): SimpleBeanBuilder<T> = also {
+        isSingleton = true
     }
 
     @SimpleBeanBuilderDSL
@@ -36,13 +44,14 @@ public class SimpleBeanBuilder<T : Any>(
     }
 
     public fun build(): Bean<T> = SimpleBean(
-        type, isPreferred, factory.ifNull { "Bean's factory function was null" }
+        type, isPreferred, isSingleton, factory.ifNull { "Bean's factory function was null" }
     )
 }
 
 internal class SimpleBean<T : Any>(
     override val type: KClass<T>,
     override val isPreferred: Boolean,
+    override val isSingleton: Boolean = true,
     private val getter: () -> T,
 ) : Bean<T> {
     override fun get(): T = getter()

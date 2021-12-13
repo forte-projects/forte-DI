@@ -25,6 +25,11 @@ public interface Bean<T : Any> : Provider<T>, BeanDescription {
     public val isPreferred: Boolean
 
     /**
+     * 此Bean是否为单例。如果是单例，则在调用一次 [get] 之后应由管理器保存其实例。
+     */
+    public val isSingleton: Boolean
+
+    /**
      * 这个 [Bean] 的实际类型。
      */
     override val type: KClass<T>

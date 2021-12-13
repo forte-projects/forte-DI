@@ -1,12 +1,16 @@
 package love.forte.di.core
 
 import love.forte.di.Bean
+import love.forte.di.BeanContainer
 import love.forte.di.BeanManager
+import love.forte.di.core.internal.CoreBeanManagerImpl
 import kotlin.reflect.KClass
 
 
 /**
  * 基础的BeanManager.
+ *
+ * [CoreBeanManager] 提供最基础的 [Bean] 管理。
  *
  * @author ForteScarlet
  */
@@ -15,11 +19,24 @@ public interface CoreBeanManager : BeanManager {
     override fun getOrNull(name: String): Any?
     override fun <T : Any> getAll(type: KClass<T>): List<String>
     override fun <T : Any> getOrNull(type: KClass<T>): T?
+
+    public companion object {
+        @JvmStatic
+        public fun newCoreBeanManager(
+            parentContainer: BeanContainer,
+            vararg processors: CoreBeanManagerBeanRegisterPostProcessor
+        ): CoreBeanManager = newCoreBeanManager(parentContainer, processors.asList())
+
+
+        @JvmStatic
+        public fun newCoreBeanManager(
+            parentContainer: BeanContainer,
+            processors: List<CoreBeanManagerBeanRegisterPostProcessor>
+        ): CoreBeanManager = CoreBeanManagerImpl(
+            parentContainer, processors.toList(),
+        )
+    }
 }
-
-
-
-
 
 
 /**
@@ -28,7 +45,7 @@ public interface CoreBeanManager : BeanManager {
  * 会在bean验证名称之前进行处理。
  *
  */
-public interface CoreBeanManagerBeanRegisterPostProcessor : Comparable<CoreBeanManagerBeanRegisterPostProcessor> {
+public fun interface CoreBeanManagerBeanRegisterPostProcessor : Comparable<CoreBeanManagerBeanRegisterPostProcessor> {
 
     /**
      * 优先级.
@@ -48,10 +65,39 @@ public interface CoreBeanManagerBeanRegisterPostProcessor : Comparable<CoreBeanM
 }
 
 
-/**
- * 根据类型生成对应的BeanName.
- */
-public interface BeanNameGenerator {
+@DslMarker
+@Retention(AnnotationRetention.BINARY)
+internal annotation class CbmConfDsl
+
+
+public class CoreBeanManagerConfiguration {
+    @CbmConfDsl
+    public var processors: MutableList<CoreBeanManagerBeanRegisterPostProcessor> = mutableListOf()
+
+    @CbmConfDsl
+    public var parentContainer: BeanContainer = BeanContainer
+
+    @CbmConfDsl
+    public fun plusProcessor(processor: CoreBeanManagerBeanRegisterPostProcessor): CoreBeanManagerConfiguration = also {
+        processors.add(processor)
+    }
+
+    @CbmConfDsl
+    public fun process(processor: CoreBeanManagerBeanRegisterPostProcessor) {
+        plusProcessor(processor)
+    }
+
+    public fun build(): CoreBeanManager {
+        return CoreBeanManagerImpl(
+            parentContainer, processors
+        )
+    }
+
 
 }
 
+
+@CbmConfDsl
+public inline fun coreBeanManager(config: CoreBeanManagerConfiguration.() -> Unit): CoreBeanManager {
+    return CoreBeanManagerConfiguration().also(config).build()
+}
