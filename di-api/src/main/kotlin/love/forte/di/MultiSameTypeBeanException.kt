@@ -1,4 +1,4 @@
-package love.forte.common.di
+package love.forte.di
 
 /**
  *
@@ -6,7 +6,7 @@ package love.forte.common.di
  *
  * @author ForteScarlet
  */
-public open class MultiSameTypeBeanDefinedException : IllegalStateException {
+public open class MultiSameTypeBeanException : BeansException {
     public constructor() : super()
     public constructor(s: String?) : super(s)
     public constructor(message: String?, cause: Throwable?) : super(message, cause)

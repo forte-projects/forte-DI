@@ -22,9 +22,9 @@ subprojects {
 dependencies {
     api(project(":di-api"))
     api(kotlin("reflect", version = "1.6.0"))
-    compileOnly("org.springframework:spring-context:5.3.13") // component
-    compileOnly("org.springframework:spring-core:5.3.13") // aliasFor
-    compileOnly("org.springframework.boot:spring-boot:2.6.1") // ConfigurationProperties
+    implementation("org.springframework:spring-context:5.3.13") // component
+
+    testImplementation("org.springframework.boot:spring-boot-starter-web:2.6.1")
 }
 
 kotlin {
