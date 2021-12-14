@@ -3,18 +3,31 @@ package love.forte.di.core.internal
 import love.forte.di.Bean
 import love.forte.di.BeanManager
 import love.forte.di.BeansException
+import love.forte.di.annotation.BeansFactory
+import love.forte.di.annotation.Preferred
 import love.forte.di.core.CoreBeanClassRegistrar
 import love.forte.di.core.SimpleBean
+import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.function.Supplier
 import javax.inject.Inject
 import javax.inject.Named
 import kotlin.reflect.*
 import kotlin.reflect.full.declaredMemberProperties
+import kotlin.reflect.full.instanceParameter
+import kotlin.reflect.full.memberFunctions
+import kotlin.reflect.full.valueParameters
+import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.jvmName
 
 public interface AnnotationGetter {
-    public fun <T : Annotation> getAnnotation(element: KAnnotatedElement, annotationType: KClass<T>): T?
+    public fun <T : Annotation, R : Any> getAnnotationProperty(
+        element: KAnnotatedElement,
+        annotationType: KClass<T>,
+        name: String,
+        propertyType: KClass<R>
+    ): R?
+
     public fun <T : Annotation> containsAnnotation(element: KAnnotatedElement, annotationType: KClass<T>): Boolean
 }
 
@@ -27,28 +40,120 @@ public interface AnnotationGetter {
 internal class CoreBeanClassRegistrarImpl(
     internal val annotationGetter: AnnotationGetter
 ) : CoreBeanClassRegistrar {
+    companion object {
+        internal val logger = LoggerFactory.getLogger(CoreBeanClassRegistrarImpl::class.java)
+        internal val basicTypes = setOf(
+            Byte::class, Short::class, Int::class, Long::class,
+            Char::class, Boolean::class, Double::class, Float::class,
+            String::class
+        )
+    }
 
 
     // 缓冲区
     private val buffer: MutableMap<String, BeanDefinition<*>> = mutableMapOf()
 
 
-    override fun register(vararg types: KClass<*>): CoreBeanClassRegistrar {
-        TODO("Not yet implemented")
+    override fun register(vararg types: KClass<*>): CoreBeanClassRegistrarImpl = also {
+        val definitions = types.flatMap { it.toDefinition() }
+        for (definition in definitions) {
+            println("def name = '${definition.name}': $definition")
+            buffer.merge(definition.name, definition) { old, now ->
+                throw BeansException("Bean name conflict: $old vs $now")
+            }
+        }
     }
+
+
+    private fun <T : Any> KClass<T>.toDefinition(): List<BeanDefinition<*>> {
+        val isPreferred = annotationGetter.containsAnnotation(this, Preferred::class)
+        val objectInstance = objectInstance
+        val currentName = annotationGetter.getAnnotationProperty(this, Named::class, "value", String::class)?.takeIf { it.isNotEmpty() }
+        val currentDefinition = if (objectInstance != null) {
+            ObjectDefinition(this, currentName, isPreferred)
+        } else {
+            SimpleClassDefinition(
+                type = this,
+                isPreferred = isPreferred,
+                initName = currentName,
+                registrar = this@CoreBeanClassRegistrarImpl
+            )
+        }
+
+        println("current: ${currentDefinition.name}")
+
+        if (annotationGetter.containsAnnotation(this, BeansFactory::class)) {
+            val subList: List<BeanDefinition<*>> = this.memberFunctions.asSequence()
+                .filter { func ->
+                    annotationGetter.containsAnnotation(func, Named::class)
+                }.filter { func ->
+                    if (func.visibility != KVisibility.PUBLIC) {
+                        logger.warn("Only functions with visibility == PUBLIC can be managed, but {}", func)
+                        false
+                    } else true
+                }.filter { func -> !func.isInline }
+                .filter { func ->
+                    // 返回值不能是范型, 且必须有返回值.
+                    with(func.returnType.classifier) {
+                        when {
+                            this !is KClass<*> -> {
+                                logger.error("The function return type must be an explicit type, but {}", func)
+                                false
+                            }
+                            this == Unit::class -> {
+                                logger.error("The function return type must not be Unit, but {}", func)
+                                false
+                            }
+                            this in basicTypes -> {
+                                logger.warn(
+                                    "The function return type should not be the basic data type or String. but {}",
+                                    func
+                                )
+                                true
+                            }
+                            else -> true
+                        }
+                    }
+                }.map { func ->
+                    if (func.returnType.isMarkedNullable) {
+                        throw BeansException("The function return type cannot mark nullable. but $func")
+                    }
+
+                    val funcName = annotationGetter.getAnnotationProperty(func, Named::class, "value", String::class)?.takeIf { it.isNotEmpty() }
+                    // 函数不允许出现null
+
+                    val funcIsPreferred = annotationGetter.containsAnnotation(func, Preferred::class)
+
+                    @Suppress("UNCHECKED_CAST")
+                    SimpleFunctionDefinition(
+                        func as KFunction<Any>,
+                        currentDefinition.name,
+                        funcIsPreferred,
+                        funcName,
+                        this@CoreBeanClassRegistrarImpl
+                    )
+                }.toList()
+
+            return mutableListOf<BeanDefinition<*>>(currentDefinition).also { it.addAll(subList) }
+        } else {
+            return listOf(currentDefinition)
+        }
+    }
+
 
     override fun clear() {
         buffer.clear()
     }
 
     override fun inject(beanManager: BeanManager) {
-
-        TODO()
+        for (value in buffer.values) {
+            beanManager.register(value.name, value.toBean(beanManager))
+        }
     }
 }
 
 
-private interface BeanDefinition<T : Any> {
+private sealed interface BeanDefinition<T : Any> {
 
     /**
      * name
@@ -68,16 +173,39 @@ private interface BeanDefinition<T : Any> {
  */
 private class ObjectDefinition<T : Any>(
     private val type: KClass<T>,
+    initName: String? = null,
     private val isPreferred: Boolean,
+) : BeanDefinition<T> by SingletonDefinition(
+    isPreferred,
+    checkNotNull(type.objectInstance) { "Type $type not an object." },
+    initName,
+    type
+) {
+    override fun toString(): String {
+        return "ObjectDefinition(name=$name, type=$type, isPreferred=$isPreferred)"
+    }
+}
+
+
+private class SingletonDefinition<T : Any>(
+    private val isPreferred: Boolean,
+    private val instance: T,
+    initName: String? = null,
+    @Suppress("UNCHECKED_CAST")
+    private val type: KClass<T> = instance::class as KClass<T>
 ) : BeanDefinition<T> {
-    override val name: String = type.qualifiedName ?: type.jvmName
-    private val instance: T = checkNotNull(type.objectInstance) { "Type $type not an object." }
-    override fun toBean(beanManager: BeanManager) = SimpleBean(
+    override val name: String = initName ?: type.qualifiedName ?: type.jvmName
+
+    override fun toBean(beanManager: BeanManager): Bean<T> = SimpleBean(
         type,
         isPreferred,
         // 不需要标记singleton
         isSingleton = false
     ) { instance }
+
+    override fun toString(): String {
+        return "SingletonDefinition(name=$name, type=$type, isPreferred=$isPreferred)"
+    }
 }
 
 
@@ -87,6 +215,7 @@ private class ObjectDefinition<T : Any>(
 private class SimpleClassDefinition<T : Any>(
     private val type: KClass<T>,
     private val isPreferred: Boolean,
+    initName: String? = null,
     private val registrar: CoreBeanClassRegistrarImpl
 ) : BeanDefinition<T> {
     /**
@@ -124,36 +253,10 @@ private class SimpleClassDefinition<T : Any>(
         val parameterSize = parameters.size
         val annotationGetter = registrar.annotationGetter
 
-        fun KParameter.toParameterType(): ParameterWithType {
-            val it = this
-            val classifier = it.type.classifier
-            if (classifier is KClass<*>) {
-                return ParameterWithType(it, classifier)
-            } else throw IllegalStateException("Unable to resolve parameter type classifier: $classifier")
-        }
-
-        fun ParameterWithType.toBinder(): ParameterBinder {
-            val p = this
-            val parameter = p.parameter
-            val optional = parameter.isOptional
-            val nullable = parameter.type.isMarkedNullable
-            // 是否存在 @Named
-            val name = annotationGetter.getAnnotation(p.parameter, Named::class)?.value?.takeIf { it.isNotEmpty() }
-            val getter: (BeanManager) -> Any? = if (name != null) {
-                generateNamedGetterWithSpecialType(name, p.type, p.parameter.type, nullable, optional)
-            } else {
-                // no name. use type
-                generateTypedGetterWithSpecialType(p.type, p.parameter.type, nullable, optional)
-            }
-
-            return ParameterBinder(parameter, getter)
-        }
-
-        fun KParameter.toBinder(): ParameterBinder = toParameterType().toBinder()
 
         //region Initializer init
         // init needed
-        val binderList = parameters.map(KParameter::toBinder)
+        val binderList = parameters.map { p -> p.toBinder(annotationGetter) }
 
         initializer = i@{ manager ->
             return@i {
@@ -172,15 +275,17 @@ private class SimpleClassDefinition<T : Any>(
         val propertiesInjectorList: List<(BeanManager, T) -> Unit> = type.declaredMemberProperties.filter { prop ->
             annotationGetter.containsAnnotation(prop, Inject::class)
         }.map { prop ->
+            prop.isAccessible = true
 
             if (prop is KMutableProperty1) {
                 val returnType = prop.returnType
-                val propType = prop.returnType.classifier as? KClass<*> ?: throw IllegalStateException("Unable to confirm property type $prop")
+                val propType = prop.returnType.classifier as? KClass<*>
+                    ?: throw IllegalStateException("Unable to confirm property type $prop")
 
                 @Suppress("UNCHECKED_CAST")
                 prop as KMutableProperty1<T, Any?>
 
-                val name = annotationGetter.getAnnotation(prop, Named::class)?.value
+                val name = annotationGetter.getAnnotationProperty(prop, Named::class, "value", String::class)?.takeIf { it.isNotEmpty() }
                 val nullable = returnType.isMarkedNullable
 
                 val getter = if (name != null) {
@@ -217,13 +322,121 @@ private class SimpleClassDefinition<T : Any>(
 
     }
 
+    override val name: String = initName ?: type.qualifiedName ?: type.jvmName
+
 
     override fun toBean(beanManager: BeanManager): Bean<T> {
-        TODO("Not yet implemented")
+        val initializerToGetter = initializer(beanManager)
+        val injectorForGetter: (T) -> Unit = { instance ->
+            injector(beanManager, instance)
+        }
+        val getter: () -> T = {
+            initializerToGetter().also(injectorForGetter)
+        }
+
+        return SimpleBean(
+            type,
+            isPreferred,
+            getter = getter
+        )
     }
 
-    override val name: String = type.qualifiedName ?: type.jvmName
+
+    override fun toString(): String {
+        return "SimpleClassDefinition(name=$name, type=$type, isPreferred=$isPreferred)"
+    }
 }
+
+
+/**
+ * 某factory类型下的子元素
+ */
+private class SimpleFunctionDefinition<T : Any>(
+    private val function: KFunction<T>,
+    private val containerName: String,
+    private val isPreferred: Boolean,
+    initName: String? = null,
+    registrar: CoreBeanClassRegistrarImpl
+) : BeanDefinition<T> {
+
+    @Suppress("UNCHECKED_CAST")
+    private val returnType: KClass<T> = function.returnType.classifier as? KClass<T>
+        ?: throw BeansException("Unable to determine function return type: $function")
+
+    private val getterFunc: (BeanManager) -> () -> T
+
+    init {
+
+        val annotationGetter = registrar.annotationGetter
+
+        // 所有所需参数
+        val binderList = function.valueParameters.map { p -> p.toBinder(annotationGetter) }
+        val instanceParameter = function.instanceParameter
+
+        getterFunc = { manager ->
+            if (instanceParameter == null) {
+                {
+                    val args = HashMap<KParameter, Any?>(binderList.size)
+                    binderList.forEach { it.include(manager, args) }
+                    function.callBy(args)
+                }
+            } else {
+                {
+                    val args = HashMap<KParameter, Any?>(binderList.size + 1)
+                    args[instanceParameter] = manager[containerName]
+                    binderList.forEach { it.include(manager, args) }
+                    function.callBy(args)
+                }
+            }
+        }
+    }
+
+
+    override fun toBean(beanManager: BeanManager): Bean<T> {
+        return SimpleBean(
+            returnType,
+            isPreferred,
+            getter = getterFunc(beanManager)
+        )
+    }
+
+    override val name: String = initName ?: "${containerName}.${function.name}"
+
+    override fun toString(): String {
+        return "SimpleFunctionDefinition(name=$name, type=$returnType, container=$containerName, isPreferred=$isPreferred)"
+    }
+}
+
+
+private fun KParameter.toParameterType(): ParameterWithType {
+    val it = this
+    val classifier = it.type.classifier
+    if (classifier is KClass<*>) {
+        return ParameterWithType(it, classifier)
+    } else throw IllegalStateException("Unable to resolve parameter type classifier: $classifier")
+}
+
+private fun ParameterWithType.toBinder(annotationGetter: AnnotationGetter): ParameterBinder {
+    val p = this
+    val parameter = p.parameter
+    val optional = parameter.isOptional
+    val nullable = parameter.type.isMarkedNullable
+    // 是否存在 @Named
+    val name = annotationGetter.getAnnotationProperty(p.parameter, Named::class, "value", String::class)?.takeIf { it.isNotEmpty() }
+        ?.takeIf { it.isNotEmpty() }
+    val getter: (BeanManager) -> Any? = if (name != null) {
+        generateNamedGetterWithSpecialType(name, p.type, p.parameter.type, nullable, optional)
+    } else {
+        // no name. use type
+        generateTypedGetterWithSpecialType(p.type, p.parameter.type, nullable, optional)
+    }
+
+    return ParameterBinder(parameter, getter)
+}
+
+
+private fun KParameter.toBinder(annotationGetter: AnnotationGetter): ParameterBinder =
+    toParameterType().toBinder(annotationGetter)
 
 
 private fun generateNamedGetterWithSpecialType(

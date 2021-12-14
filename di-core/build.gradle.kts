@@ -8,15 +8,8 @@ group = "love.forte.commons"
 version = "1.0-SNAPSHOT"
 
 repositories {
+    mavenLocal()
     mavenCentral()
-}
-
-subprojects {
-    repositories {
-        mavenCentral()
-    }
-
-
 }
 
 dependencies {
@@ -25,7 +18,9 @@ dependencies {
     compileOnly("org.springframework:spring-context:5.3.13") // component
     compileOnly("org.springframework:spring-core:5.3.13") // aliasFor
     compileOnly("org.springframework.boot:spring-boot:2.6.1") // ConfigurationProperties
+    testImplementation("love.forte.annotation-tool:core:0.6.0")
 }
+
 
 kotlin {
     // 严格模式

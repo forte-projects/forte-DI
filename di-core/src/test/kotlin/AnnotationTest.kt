@@ -1,13 +1,7 @@
-import java.util.*
 import javax.inject.Inject
-import kotlin.reflect.KCallable
-import kotlin.reflect.KClass
-import kotlin.reflect.KFunction
-import kotlin.reflect.full.isSubclassOf
-import kotlin.reflect.full.isSubtypeOf
 import kotlin.reflect.full.primaryConstructor
 
-class Foo<T> (@Inject val nameFactory: () -> String?) {
+class Foo<T>(@Inject val nameFactory: () -> String?) {
 
 
 }

@@ -7,23 +7,14 @@ plugins {
 group = "love.forte.commons"
 version = "1.0-SNAPSHOT"
 
-repositories {
-    mavenCentral()
-}
-
-subprojects {
-    repositories {
-        mavenCentral()
-    }
-
-
-}
 
 dependencies {
     api("javax.inject:javax.inject:1")
-    compileOnly("org.springframework:spring-context:5.3.9") // component
-    compileOnly("org.springframework:spring-core:5.3.9") // aliasFor
-    compileOnly("org.springframework.boot:spring-boot:2.5.7") // ConfigurationProperties
+    api("org.slf4j:slf4j-api:1.7.32")
+    compileOnly("org.springframework:spring-context:5.3.13") // component
+    compileOnly("org.springframework:spring-core:5.3.13") // aliasFor
+    compileOnly("org.springframework.boot:spring-boot:2.6.1") // ConfigurationProperties
+    compileOnly("love.forte.annotation-tool:core:0.5.0")
 }
 
 kotlin {

@@ -1,9 +1,11 @@
 package love.forte.di.annotation
 
+import love.forte.annotationtool.core.AnnotationMapper
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.AliasFor
 import org.springframework.stereotype.Component
+import javax.inject.Named
 
 /**
  * 标记一个类或一个类下的有返回值的方法或一个属性（的getter）上，代表将其记录在bean管理器中。
@@ -20,12 +22,20 @@ import org.springframework.stereotype.Component
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER)
 @Component // for spring
 @Bean // for spring
+@Named
 public annotation class Beans(
+    /** 在spring环境下，标记在类上时可使用此参数 */
     @get:AliasFor(annotation = Component::class, attribute = "value")
     val parentBeanName: String = "",
 
+    /** 在spring环境下，标记在类上时使用此参数, 或者使用普通环境时使用此参数。 */
+    @get:AliasFor(attribute = "parentBeanName")
+    @get:AnnotationMapper.Property(target = Named::class, value = "value")
+    val value: String = "",
+
+    /** 在spring环境下，标记在 [Configuration] 下的函数上时使用此参数, 对应 [Bean] 注解参数 */
     @get:AliasFor(annotation = Bean::class, attribute = "value")
-    val childBeanName: Array<String> = []
+    val childBeanName: Array<String> = [],
 
 )
 
