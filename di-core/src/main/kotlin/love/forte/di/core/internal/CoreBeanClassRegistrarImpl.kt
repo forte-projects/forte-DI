@@ -80,8 +80,6 @@ internal class CoreBeanClassRegistrarImpl(
             )
         }
 
-        println("current: ${currentDefinition.name}")
-
         if (annotationGetter.containsAnnotation(this, BeansFactory::class)) {
             val subList: List<BeanDefinition<*>> = this.memberFunctions.asSequence()
                 .filter { func ->
@@ -284,8 +282,9 @@ private class SimpleClassDefinition<T : Any>(
 
                 @Suppress("UNCHECKED_CAST")
                 prop as KMutableProperty1<T, Any?>
-
                 val name = annotationGetter.getAnnotationProperty(prop, Named::class, "value", String::class)?.takeIf { it.isNotEmpty() }
+                println("prop inject name = $name by $prop")
+                println(annotationGetter.getAnnotationProperty(prop, Named::class, "value", String::class))
                 val nullable = returnType.isMarkedNullable
 
                 val getter = if (name != null) {

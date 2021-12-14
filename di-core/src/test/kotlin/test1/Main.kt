@@ -46,9 +46,9 @@ private object AnnoGetter : AnnotationGetter {
             is KFunction<*> -> javaConstructor?.let { jc ->
                 tool.getAnnotation(jc, at)
             } ?: javaMethod?.let { jm -> tool.getAnnotation(jm, at) }
-            is KProperty<*> -> javaGetter?.let { jGetter ->
+            is KProperty<*> -> javaField?.let { jGetter ->
                 tool.getAnnotation(jGetter, at)
-            } ?: javaField?.let { jField -> tool.getAnnotation(jField, at) }
+            } ?: javaGetter?.let { jField -> tool.getAnnotation(jField, at) }
             is KParameter -> null // TODO
 
             else -> throw IllegalStateException("Not support annotated element: $this")
@@ -62,7 +62,10 @@ private object AnnoGetter : AnnotationGetter {
         propertyType: KClass<R>
     ): R? {
         val metadata = AnnotationMetadata.resolve(annotationType.java)
+        println(metadata)
         val annotation = element.toAnnotatedElement(annotationType) ?: return null
+        println(annotation)
+        println(metadata.getProperties(annotation))
         val value = metadata.getProperties(annotation)[name] ?: return null
         return propertyType.cast(value)
     }
