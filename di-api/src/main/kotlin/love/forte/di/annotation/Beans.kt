@@ -25,11 +25,11 @@ import javax.inject.Named
 @Named
 public annotation class Beans(
     /** 在spring环境下，标记在类上时可使用此参数 */
-    @get:AliasFor(annotation = Component::class, attribute = "value")
+    @get:AliasFor(annotation = Component::class, value = "value")
     val parentBeanName: String = "",
 
     /** 在spring环境下，标记在类上时使用此参数, 或者使用普通环境时使用此参数。 */
-    @get:AliasFor(attribute = "parentBeanName")
+    @get:AliasFor(annotation = Component::class, value = "value")
     @get:AnnotationMapper.Property(target = Named::class, value = "value")
     val value: String = "",
 

@@ -8,6 +8,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
+import javax.annotation.Resource
 import javax.inject.Inject
 import javax.inject.Named
 
@@ -22,18 +23,18 @@ fun main(vararg args: String) {
 @RestController
 open class TestController {
 
-    @Autowired
-    private lateinit var myBean: MyBean
+    @Resource
+    private lateinit var b: MyBean
 
     @Autowired
     private lateinit var util: AbcUtil
 
     @GetMapping("/test")
     fun test(): List<String> {
-        println(myBean)
+        println(b)
         println(util)
         return listOf(
-            myBean.name,
+            b.name,
             util.bean1.name,
             util.bean2.name,
         )
