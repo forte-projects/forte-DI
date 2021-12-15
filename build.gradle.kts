@@ -4,8 +4,11 @@ plugins {
 
 }
 
-group = "love.forte.di"
-version = "1.0-SNAPSHOT"
+val g = "love.forte.di"
+val v = "0.0.1"
+
+group = g
+version = v
 
 repositories {
     mavenLocal()
@@ -13,6 +16,9 @@ repositories {
 }
 
 subprojects {
+    group = g
+    version = v
+
     repositories {
         mavenLocal()
         mavenCentral()
