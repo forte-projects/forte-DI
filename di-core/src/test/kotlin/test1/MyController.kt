@@ -10,8 +10,8 @@ import javax.inject.Inject
 @Beans
 class MyController {
 
-    @Inject
-    private lateinit var serviceGetter: () -> Service
+    @set:Inject
+    lateinit var serviceGetter: () -> Service
 
 
     fun value() {

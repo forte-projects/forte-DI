@@ -42,8 +42,8 @@ class MyServiceImpl(
     val bar: Bar,
 ) : Service {
 
-    @Inject
-    @Named("bar-age")
+    @set:Inject
+    @set:Named("bar-age")
     lateinit var barAge: Bar
 
     override val str: String

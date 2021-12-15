@@ -291,41 +291,38 @@ private class SimpleClassDefinition<T : Any>(
         }.map { prop ->
             prop.isAccessible = true
 
-            if (prop is KMutableProperty1) {
-                val returnType = prop.returnType
-                val propType = prop.returnType.classifier as? KClass<*>
-                    ?: throw IllegalStateException("Unable to confirm property type $prop")
+            val returnType = prop.returnType
+            val propType = prop.returnType.classifier as? KClass<*>
+                ?: throw IllegalStateException("Unable to confirm property type $prop")
 
-                @Suppress("UNCHECKED_CAST")
-                prop as KMutableProperty1<T, Any?>
-                val name = annotationGetter.getAnnotationProperty(prop, Named::class, "value", String::class)
+            @Suppress("UNCHECKED_CAST")
+            prop as KMutableProperty1<T, Any?>
+            val name = annotationGetter.getAnnotationProperty(prop, Named::class, "value", String::class)
+                ?.takeIf { it.isNotEmpty() }
+                ?: annotationGetter.getAnnotationProperty(prop.setter, Named::class, "value", String::class)
                     ?.takeIf { it.isNotEmpty() }
-                println("prop inject name = $name by $prop")
-                println(annotationGetter.getAnnotationProperty(prop, Named::class, "value", String::class))
-                val nullable = returnType.isMarkedNullable
 
-                val getter = if (name != null) {
-                    generateNamedGetterWithSpecialType(name, propType, returnType, nullable, false)
-                } else {
-                    generateTypedGetterWithSpecialType(propType, returnType, nullable, false)
-                }
+            val nullable = returnType.isMarkedNullable
 
-                if (nullable) {
-                    { manager, instance ->
-                        prop.set(instance, getter(manager))
-                    }
-                } else {
-                    { manager, instance ->
-                        val value = getter(manager)
-                        if (value != null) {
-                            prop.set(instance, value)
-                        } else throw BeansException("Inject for property $prop value was null")
-                    }
-                }
-
+            val getter = if (name != null) {
+                generateNamedGetterWithSpecialType(name, propType, returnType, nullable, false)
             } else {
-                throw BeansException("Property must be mutable.")
+                generateTypedGetterWithSpecialType(propType, returnType, nullable, false)
             }
+
+            if (nullable) {
+                { manager, instance ->
+                    prop.set(instance, getter(manager))
+                }
+            } else {
+                { manager, instance ->
+                    val value = getter(manager)
+                    if (value != null) {
+                        prop.set(instance, value)
+                    } else throw BeansException("Inject for property $prop value was null")
+                }
+            }
+
         }
 
         injector = { manager, instance ->
