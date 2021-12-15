@@ -11,6 +11,8 @@ version = "1.0-SNAPSHOT"
 dependencies {
     api("javax.inject:javax.inject:1")
     api("org.slf4j:slf4j-api:1.7.32")
+
+    compileOnly("javax.annotation:javax.annotation-api:1.3.2")
     compileOnly("org.springframework:spring-context:5.3.13") // component
     compileOnly("org.springframework:spring-core:5.3.13") // aliasFor
     compileOnly("org.springframework.boot:spring-boot:2.6.1") // ConfigurationProperties

@@ -2,6 +2,7 @@ package love.forte.test
 
 import love.forte.di.annotation.Beans
 import love.forte.di.annotation.BeansFactory
+import love.forte.di.annotation.Depend
 import love.forte.di.annotation.Preferred
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -26,7 +27,7 @@ open class TestController {
     @Resource
     private lateinit var b: MyBean
 
-    @Autowired
+    @field:Depend
     private lateinit var util: AbcUtil
 
     @GetMapping("/test")
