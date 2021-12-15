@@ -20,13 +20,23 @@ import kotlin.reflect.full.valueParameters
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.jvmName
 
+/**
+ * 注解获取器。
+ */
 public interface AnnotationGetter {
-    public fun <T : Annotation, R : Any> getAnnotationProperty(
+    public fun <R : Any> getAnnotationProperty(
         element: KAnnotatedElement,
-        annotationType: KClass<T>,
+        annotationType: KClass<out Annotation>,
         name: String,
         propertyType: KClass<R>
     ): R?
+
+    public fun <R : Any> getAnnotationsProperties(
+        element: KAnnotatedElement,
+        annotationType: KClass<out Annotation>,
+        name: String,
+        propertyType: KClass<R>
+    ): List<R>
 
     public fun <T : Annotation> containsAnnotation(element: KAnnotatedElement, annotationType: KClass<T>): Boolean
 }
@@ -57,7 +67,6 @@ internal class CoreBeanClassRegistrarImpl(
     override fun register(vararg types: KClass<*>): CoreBeanClassRegistrarImpl = also {
         val definitions = types.flatMap { it.toDefinition() }
         for (definition in definitions) {
-            println("def name = '${definition.name}': $definition")
             buffer.merge(definition.name, definition) { old, now ->
                 throw BeansException("Bean name conflict: $old vs $now")
             }
@@ -68,7 +77,8 @@ internal class CoreBeanClassRegistrarImpl(
     private fun <T : Any> KClass<T>.toDefinition(): List<BeanDefinition<*>> {
         val isPreferred = annotationGetter.containsAnnotation(this, Preferred::class)
         val objectInstance = objectInstance
-        val currentName = annotationGetter.getAnnotationProperty(this, Named::class, "value", String::class)?.takeIf { it.isNotEmpty() }
+        val currentName = annotationGetter.getAnnotationProperty(this, Named::class, "value", String::class)
+            ?.takeIf { it.isNotEmpty() }
         val currentDefinition = if (objectInstance != null) {
             ObjectDefinition(this, currentName, isPreferred)
         } else {
@@ -117,7 +127,8 @@ internal class CoreBeanClassRegistrarImpl(
                         throw BeansException("The function return type cannot mark nullable. but $func")
                     }
 
-                    val funcName = annotationGetter.getAnnotationProperty(func, Named::class, "value", String::class)?.takeIf { it.isNotEmpty() }
+                    val funcName = annotationGetter.getAnnotationProperty(func, Named::class, "value", String::class)
+                        ?.takeIf { it.isNotEmpty() }
                     // 函数不允许出现null
 
                     val funcIsPreferred = annotationGetter.containsAnnotation(func, Preferred::class)
@@ -235,6 +246,7 @@ private class SimpleClassDefinition<T : Any>(
             constructors.size == 1 -> constructors.first()
             else -> {
                 val needInjects = constructors.filter {
+                    // function inject.
                     registrar.annotationGetter.containsAnnotation(it, Inject::class)
                 }
                 when {
@@ -271,7 +283,11 @@ private class SimpleClassDefinition<T : Any>(
         //region Injector init
         // 扫描所有的属性, 有Inject的就inject.
         val propertiesInjectorList: List<(BeanManager, T) -> Unit> = type.declaredMemberProperties.filter { prop ->
-            annotationGetter.containsAnnotation(prop, Inject::class)
+            // 必须是个可变属性，否则我注入个锤子
+            prop is KMutableProperty<*> && (
+                    annotationGetter.containsAnnotation(prop, Inject::class)
+                            || annotationGetter.containsAnnotation(prop.setter, Inject::class)
+                    )
         }.map { prop ->
             prop.isAccessible = true
 
@@ -282,7 +298,8 @@ private class SimpleClassDefinition<T : Any>(
 
                 @Suppress("UNCHECKED_CAST")
                 prop as KMutableProperty1<T, Any?>
-                val name = annotationGetter.getAnnotationProperty(prop, Named::class, "value", String::class)?.takeIf { it.isNotEmpty() }
+                val name = annotationGetter.getAnnotationProperty(prop, Named::class, "value", String::class)
+                    ?.takeIf { it.isNotEmpty() }
                 println("prop inject name = $name by $prop")
                 println(annotationGetter.getAnnotationProperty(prop, Named::class, "value", String::class))
                 val nullable = returnType.isMarkedNullable
@@ -421,7 +438,8 @@ private fun ParameterWithType.toBinder(annotationGetter: AnnotationGetter): Para
     val optional = parameter.isOptional
     val nullable = parameter.type.isMarkedNullable
     // 是否存在 @Named
-    val name = annotationGetter.getAnnotationProperty(p.parameter, Named::class, "value", String::class)?.takeIf { it.isNotEmpty() }
+    val name = annotationGetter.getAnnotationProperty(p.parameter, Named::class, "value", String::class)
+        ?.takeIf { it.isNotEmpty() }
         ?.takeIf { it.isNotEmpty() }
     val getter: (BeanManager) -> Any? = if (name != null) {
         generateNamedGetterWithSpecialType(name, p.type, p.parameter.type, nullable, optional)

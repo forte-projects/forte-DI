@@ -18,7 +18,12 @@ dependencies {
     compileOnly("org.springframework:spring-context:5.3.13") // component
     compileOnly("org.springframework:spring-core:5.3.13") // aliasFor
     compileOnly("org.springframework.boot:spring-boot:2.6.1") // ConfigurationProperties
-    testImplementation("love.forte.annotation-tool:core:0.6.0")
+
+    testImplementation("javax.inject:javax.inject:1")
+    testImplementation("love.forte.annotation-tool:kcore:0.6.1")
+    testImplementation("org.springframework:spring-context:5.3.13") // component
+    testImplementation("org.springframework:spring-core:5.3.13") // aliasFor
+    testImplementation("org.springframework.boot:spring-boot:2.6.1") // ConfigurationProperties
 }
 
 

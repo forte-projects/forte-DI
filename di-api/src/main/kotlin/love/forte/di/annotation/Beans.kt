@@ -1,6 +1,6 @@
 package love.forte.di.annotation
 
-import love.forte.annotationtool.core.AnnotationMapper
+import love.forte.annotationtool.AnnotationMapper
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.AliasFor

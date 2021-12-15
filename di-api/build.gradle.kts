@@ -14,7 +14,7 @@ dependencies {
     compileOnly("org.springframework:spring-context:5.3.13") // component
     compileOnly("org.springframework:spring-core:5.3.13") // aliasFor
     compileOnly("org.springframework.boot:spring-boot:2.6.1") // ConfigurationProperties
-    compileOnly("love.forte.annotation-tool:core:0.5.0")
+    compileOnly("love.forte.annotation-tool:api:0.6.1")
 }
 
 kotlin {
