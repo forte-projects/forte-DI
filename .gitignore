@@ -24,7 +24,7 @@
 # Gradle
 .idea/**/gradle.xml
 .idea/**/libraries
-
+*.gpg
 gradle.properties
 
 # Gradle and Maven with auto-import
