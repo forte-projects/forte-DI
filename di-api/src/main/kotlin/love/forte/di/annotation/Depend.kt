@@ -15,10 +15,8 @@ package love.forte.di.annotation
 import love.forte.annotationtool.AnnotationMapper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.core.annotation.AliasFor
-import javax.annotation.Resource
 import javax.inject.Inject
 import javax.inject.Named
-import kotlin.reflect.KClass
 
 
 /**
@@ -33,14 +31,9 @@ import kotlin.reflect.KClass
 )
 @MustBeDocumented
 @Autowired
-@AnnotationMapper(value = [Inject::class, Named::class]) // support in forte-di only.
+@AnnotationMapper(value = [Inject::class]) // support in forte-di only.
 public annotation class Depend(
 
-    /**
-     * 指定目标依赖的名称。
-     * 在依赖管理中，依赖的名称应当是唯一的，但是需要注意你所需的依赖类型应当与当前的属性类型一致。
-     */
-    // @get:AliasFor(annotation = Resource::class)
     @Deprecated("Use @Named(...)")
     val name: String = "",
 

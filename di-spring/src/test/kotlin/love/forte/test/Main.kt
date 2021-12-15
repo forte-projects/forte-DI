@@ -4,7 +4,6 @@ import love.forte.di.annotation.Beans
 import love.forte.di.annotation.BeansFactory
 import love.forte.di.annotation.Depend
 import love.forte.di.annotation.Preferred
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.web.bind.annotation.GetMapping
@@ -25,7 +24,10 @@ fun main(vararg args: String) {
 open class TestController {
 
     @Resource
-    private lateinit var b: MyBean
+    lateinit var b: MyBean
+
+    @field:Inject
+    lateinit var b2: MyBean
 
     @field:Depend
     private lateinit var util: AbcUtil
@@ -33,6 +35,7 @@ open class TestController {
     @GetMapping("/test")
     fun test(): List<String> {
         println(b)
+        println(b2)
         println(util)
         return listOf(
             b.name,
