@@ -44,10 +44,20 @@ inline fun Project.configurePublishing(artifactId: String) {
 
                 setupPom(project = project)
 
+                println("=============POM INF===============")
+                println("name: ${pom.name}")
+                println("groupId: $groupId")
+                println("artifactId: $artifactId")
+                println("version: $version")
+                println("wholePath: $groupId:$artifactId:$version")
+                println("description: ${pom.description}")
+                println("===================================")
+
                 artifact(sourcesJar)
                 artifact(javadocJar.get())
             }
         }
+
 
         repositories {
             mavenLocal()

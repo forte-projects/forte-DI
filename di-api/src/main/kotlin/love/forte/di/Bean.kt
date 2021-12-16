@@ -49,3 +49,17 @@ public inline
 val <T : Any> Bean<T>.value: T
     get() = get()
 
+
+/**
+ * 代理一个 [Bean] 并对他的返回值进行处理。
+ */
+public fun <T : Any> Bean<T>.postValue(block: (source: Bean<T>, T) -> T): Bean<T> = PostValueBean(block, this)
+
+
+private class PostValueBean<T : Any>(private val processor: (Bean<T>, T) -> T, private val delegate: Bean<T>) :
+    Bean<T> by delegate {
+    override fun get(): T {
+        return processor(delegate, delegate.get())
+    }
+}
+
