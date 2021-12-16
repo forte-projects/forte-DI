@@ -63,3 +63,20 @@ private class PostValueBean<T : Any>(private val processor: (Bean<T>, T) -> T, p
     }
 }
 
+
+@Suppress("UNCHECKED_CAST")
+public fun <T : Any> T.asBean(isPreferred: Boolean = false, type: KClass<T> = this::class as KClass<T>): Bean<out T> =
+    InstanceBean(this, isPreferred, type)
+
+
+private class InstanceBean<T : Any>(
+    private val instance: T,
+    override val isPreferred: Boolean,
+    override val type: KClass<T>
+) : Bean<T> {
+    override val isSingleton: Boolean get() = true
+
+    override fun get(): T = instance
+}
+
+
