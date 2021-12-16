@@ -56,7 +56,7 @@ public fun interface CoreBeanManagerBeanRegisterPostProcessor : Comparable<CoreB
      * 得到即将被注册的[Bean], 并返回最终的处理结果。
      * 如果在某个流程中得到null，则终止本次处理。
      */
-    public fun process(bean: Bean<*>, beanManager: CoreBeanManager): Bean<*>?
+    public fun process(bean: Bean<Any>, beanManager: CoreBeanManager): Bean<*>?
 
 
     override fun compareTo(other: CoreBeanManagerBeanRegisterPostProcessor): Int {

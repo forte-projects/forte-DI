@@ -74,7 +74,8 @@ internal class CoreBeanManagerImpl(
     override fun register(name: String, bean: Bean<*>) = locker.write {
         var beanProcessed: Bean<*>? = bean
         for (processor in processors) {
-            beanProcessed = processor.process(beanProcessed!!, this)
+            @Suppress("UNCHECKED_CAST")
+            beanProcessed = processor.process(beanProcessed!! as Bean<Any>, this)
             if (beanProcessed == null) {
                 return
             }

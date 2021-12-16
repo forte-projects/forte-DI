@@ -53,7 +53,7 @@ val <T : Any> Bean<T>.value: T
 /**
  * 代理一个 [Bean] 并对他的返回值进行处理。
  */
-public fun <T : Any> Bean<T>.postValue(block: (source: Bean<T>, T) -> T): Bean<T> = PostValueBean(block, this)
+public fun <T : Any> Bean<T>.postValue(block: (source: Bean<T>, value: T) -> T): Bean<T> = PostValueBean(block, this)
 
 
 private class PostValueBean<T : Any>(private val processor: (Bean<T>, T) -> T, private val delegate: Bean<T>) :

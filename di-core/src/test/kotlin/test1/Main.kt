@@ -32,7 +32,7 @@ fun main() {
 }
 
 
-private object AnnoGetter : AnnotationGetter {
+internal object AnnoGetter : AnnotationGetter {
     val tool = KAnnotationTool()
 
     override fun <R : Any> getAnnotationProperty(

@@ -103,10 +103,10 @@ public interface BeanContainer {
 
 
     public companion object Empty : BeanContainer {
-        override fun contains(name: String): Boolean = false
-        override fun getOrNull(name: String): Any? = null
-        override fun <T : Any> getOrNull(type: KClass<T>): T? = null
-        override fun <T : Any> getAll(type: KClass<T>): List<String> = emptyList()
+        public override fun contains(name: String): Boolean = false
+        public override fun getOrNull(name: String): Any? = null
+        public override fun <T : Any> getOrNull(type: KClass<T>): T? = null
+        public override fun <T : Any> getAll(type: KClass<T>): List<String> = emptyList()
     }
 }
 
