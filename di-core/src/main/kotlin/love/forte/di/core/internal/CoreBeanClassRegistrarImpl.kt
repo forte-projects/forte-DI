@@ -3,6 +3,7 @@ package love.forte.di.core.internal
 import love.forte.di.Bean
 import love.forte.di.BeanManager
 import love.forte.di.BeansException
+import love.forte.di.annotation.Beans
 import love.forte.di.annotation.BeansFactory
 import love.forte.di.annotation.Preferred
 import love.forte.di.core.CoreBeanClassRegistrar
@@ -75,15 +76,17 @@ internal class CoreBeanClassRegistrarImpl(
 
 
     private fun <T : Any> KClass<T>.toDefinition(): List<BeanDefinition<*>> {
+        val priority = annotationGetter.getAnnotationProperty(this, Beans::class, "priority", Int::class) ?: 1000
         val isPreferred = annotationGetter.containsAnnotation(this, Preferred::class)
         val objectInstance = objectInstance
         val currentName = annotationGetter.getAnnotationProperty(this, Named::class, "value", String::class)
             ?.takeIf { it.isNotEmpty() }
         val currentDefinition = if (objectInstance != null) {
-            ObjectDefinition(this, currentName, isPreferred)
+            ObjectDefinition(this, priority, currentName, isPreferred)
         } else {
             SimpleClassDefinition(
                 type = this,
+                priority = priority,
                 isPreferred = isPreferred,
                 initName = currentName,
                 registrar = this@CoreBeanClassRegistrarImpl
@@ -131,6 +134,8 @@ internal class CoreBeanClassRegistrarImpl(
                         ?.takeIf { it.isNotEmpty() }
                     // 函数不允许出现null
 
+                    val funcPriority = annotationGetter.getAnnotationProperty(func, Beans::class, "priority", Int::class) ?: 1000
+
                     val funcIsPreferred = annotationGetter.containsAnnotation(func, Preferred::class)
 
                     @Suppress("UNCHECKED_CAST")
@@ -138,6 +143,7 @@ internal class CoreBeanClassRegistrarImpl(
                         func as KFunction<Any>,
                         currentDefinition.name,
                         funcIsPreferred,
+                        funcPriority,
                         funcName,
                         this@CoreBeanClassRegistrarImpl
                     )
@@ -169,6 +175,10 @@ private sealed interface BeanDefinition<T : Any> {
      */
     val name: String
 
+    /**
+     * 优先级
+     */
+    val priority: Int
 
     /**
      * 将当前定义转化为 [Bean]
@@ -182,22 +192,25 @@ private sealed interface BeanDefinition<T : Any> {
  */
 private class ObjectDefinition<T : Any>(
     private val type: KClass<T>,
+    priority: Int,
     initName: String? = null,
     private val isPreferred: Boolean,
 ) : BeanDefinition<T> by SingletonDefinition(
     isPreferred,
+    priority,
     checkNotNull(type.objectInstance) { "Type $type not an object." },
     initName,
     type
 ) {
     override fun toString(): String {
-        return "ObjectDefinition(name=$name, type=$type, isPreferred=$isPreferred)"
+        return "ObjectDefinition(name=$name, type=$type, priority=$priority, isPreferred=$isPreferred)"
     }
 }
 
 
 private class SingletonDefinition<T : Any>(
     private val isPreferred: Boolean,
+    override val priority: Int,
     private val instance: T,
     initName: String? = null,
     @Suppress("UNCHECKED_CAST")
@@ -209,7 +222,8 @@ private class SingletonDefinition<T : Any>(
         type,
         isPreferred,
         // 不需要标记singleton
-        isSingleton = false
+        isSingleton = false,
+        priority
     ) { instance }
 
     override fun toString(): String {
@@ -223,6 +237,7 @@ private class SingletonDefinition<T : Any>(
  */
 private class SimpleClassDefinition<T : Any>(
     private val type: KClass<T>,
+    override val priority: Int,
     private val isPreferred: Boolean,
     initName: String? = null,
     private val registrar: CoreBeanClassRegistrarImpl
@@ -238,6 +253,9 @@ private class SimpleClassDefinition<T : Any>(
     var injector: (BeanManager, T) -> Unit
 
     init {
+        // 尝试获取@Beans
+
+
         // 寻找构造
         // 寻找有 @Inject的构造
         val constructors = type.constructors
@@ -350,7 +368,8 @@ private class SimpleClassDefinition<T : Any>(
         return SimpleBean(
             type,
             isPreferred,
-            getter = getter
+            priority = priority,
+            getter = getter,
         )
     }
 
@@ -368,6 +387,7 @@ private class SimpleFunctionDefinition<T : Any>(
     private val function: KFunction<T>,
     private val containerName: String,
     private val isPreferred: Boolean,
+    override val priority: Int,
     initName: String? = null,
     registrar: CoreBeanClassRegistrarImpl
 ) : BeanDefinition<T> {
@@ -409,6 +429,7 @@ private class SimpleFunctionDefinition<T : Any>(
         return SimpleBean(
             returnType,
             isPreferred,
+            priority = priority,
             getter = getterFunc(beanManager)
         )
     }

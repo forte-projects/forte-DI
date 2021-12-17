@@ -25,6 +25,11 @@ public interface Bean<T : Any> : Provider<T>, BeanDescription {
     public val isPreferred: Boolean
 
     /**
+     * 优先级。当通过类型获取的时候，存在多个结果但是没有任何 [isPreferred] == true 的内容的时候，尝试获取一个唯一且最大值的结果。
+     */
+    public val priority: Int get() = 1000
+
+    /**
      * 此Bean是否为单例。如果是单例，则在调用一次 [get] 之后应由管理器保存其实例。
      */
     public val isSingleton: Boolean

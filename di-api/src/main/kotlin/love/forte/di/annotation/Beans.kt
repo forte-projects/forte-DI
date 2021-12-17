@@ -1,6 +1,7 @@
 package love.forte.di.annotation
 
 import love.forte.annotationtool.AnnotationMapper
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.AliasFor
@@ -37,6 +38,10 @@ public annotation class Beans(
     @get:AliasFor(annotation = Bean::class, attribute = "value")
     val childBeanName: Array<String> = [],
 
+    /**
+     * 优先级，仅在 forte-di 中有效。
+     */
+    val priority: Int = 1000
 )
 
 /**
@@ -50,3 +55,10 @@ public annotation class BeansFactory(
     @get:AliasFor(annotation = Configuration::class, attribute = "value")
     val name: String = ""
 )
+
+
+@Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER)
+@Component // for spring
+@ConditionalOnMissingBean  // for spring
+@Beans(priority = Int.MAX_VALUE)
+public annotation class SpareBean

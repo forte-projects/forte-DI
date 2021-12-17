@@ -129,7 +129,16 @@ internal class CoreBeanManagerImpl(
                                     typeBeanMap[type] = only
                                 }
                             } else {
-                                throw MultiSameTypeBeanException("$type")
+                                val sortedBy = subTypes.sortedBy { it.priority }
+                                val first = sortedBy[0]
+                                val second = sortedBy[1]
+                                if (first.priority == second.priority) {
+                                    throw MultiSameTypeBeanException("$type")
+                                } else {
+                                    first.getWithCast { type }.also {
+                                        typeBeanMap[type] = first
+                                    }
+                                }
                             }
                         }
                     }
