@@ -110,13 +110,19 @@ public interface BeanContainer {
     }
 }
 
+
+public inline fun <reified T : Any> BeanContainer.all(): List<String> = getAll(T::class)
+public inline fun <reified T : Any> BeanContainer.allInstance(): List<T> = T::class.let { type -> getAll(type).map { name -> get(name, type) } }
+
+
+
 /**
  * 存在嵌套关系的 [BeanContainer], 可能存在一个 [上层容器][parentContainer].
  */
 public interface HierarchicalBeanContainer : BeanContainer {
 
     /**
-     * 父级容器
+     * 父级容器. 如果父级容器不为null，则所有的其他获取函数理论上都应优先检测此父级容器。
      */
     public val parentContainer: BeanContainer?
 
