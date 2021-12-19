@@ -105,6 +105,13 @@ public interface BeanContainer {
     public fun <T : Any> getAll(type: Class<T>? = null): List<String> = getAll(type?.kotlin)
 
 
+    /**
+     * 得到此名称对应Bean的类型。
+     */
+    public fun getType(name: String): KClass<*> = TODO()
+
+
+
     public companion object Empty : BeanContainer {
         public override fun contains(name: String): Boolean = false
         public override fun getOrNull(name: String): Any? = null
