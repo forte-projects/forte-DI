@@ -17,7 +17,7 @@ import kotlin.reflect.KClass
 public interface CoreBeanManager : BeanManager {
     override fun register(name: String, bean: Bean<*>)
     override fun getOrNull(name: String): Any?
-    override fun <T : Any> getAll(type: KClass<T>): List<String>
+    override fun <T : Any> getAll(type: KClass<T>?): List<String>
     override fun <T : Any> getOrNull(type: KClass<T>): T?
 
     public companion object {

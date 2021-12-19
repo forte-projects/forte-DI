@@ -147,7 +147,10 @@ internal class CoreBeanManagerImpl(
 
     }
 
-    override fun <T : Any> getAll(type: KClass<T>): List<String> {
-        return locker.read { nameBeanMap.keys().toList() }
+    override fun <T : Any> getAll(type: KClass<T>?): List<String> {
+        return locker.read {
+            if (type == null) nameBeanMap.keys().toList()
+            else nameBeanMap.mapNotNull { (k, v) -> k.takeIf { v.type.isSubclassOf(type) } }
+        }
     }
 }

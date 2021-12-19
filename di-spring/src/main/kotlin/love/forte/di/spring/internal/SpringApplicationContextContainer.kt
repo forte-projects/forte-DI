@@ -10,7 +10,6 @@ import org.springframework.beans.factory.ListableBeanFactory
 import org.springframework.beans.factory.NoSuchBeanDefinitionException
 import org.springframework.beans.factory.NoUniqueBeanDefinitionException
 import org.springframework.beans.factory.support.BeanDefinitionRegistry
-import org.springframework.beans.factory.support.BeanNameGenerator
 import kotlin.reflect.KClass
 
 /**
@@ -108,7 +107,7 @@ internal class SpringApplicationContextContainer(
     }
 
     @Api4J
-    override fun <T : Any> getAll(type: Class<T>): List<String> {
+    override fun <T : Any> getAll(type: Class<T>?): List<String> {
         return listableBeanFactory.getBeanNamesForType(type).toList()
     }
 
@@ -131,8 +130,8 @@ internal class SpringApplicationContextContainer(
         }
     }
 
-    override fun <T : Any> getAll(type: KClass<T>): List<String> {
-        return listableBeanFactory.getBeanNamesForType(type.java).toList()
+    override fun <T : Any> getAll(type: KClass<T>?): List<String> {
+        return listableBeanFactory.getBeanNamesForType(type?.java).toList()
     }
 
 

@@ -88,8 +88,11 @@ public interface BeanContainer {
 
     /**
      * 根据类型获取此类型下的所有 [Bean] 的名称. 当无法找到任何结果的时候，会返回一个空列表。
+     *
+     * 如果 [type] == null, 则代表获取当前容器中全部内容。
+     *
      */
-    public fun <T : Any> getAll(type: KClass<T>): List<String>
+    public fun <T : Any> getAll(type: KClass<T>? = null): List<String>
 
 
     @Api4J
@@ -99,14 +102,14 @@ public interface BeanContainer {
     public fun <T : Any> getOrNull(type: Class<T>): T? = getOrNull(type.kotlin)
 
     @Api4J
-    public fun <T : Any> getAll(type: Class<T>): List<String> = getAll(type.kotlin)
+    public fun <T : Any> getAll(type: Class<T>? = null): List<String> = getAll(type?.kotlin)
 
 
     public companion object Empty : BeanContainer {
         public override fun contains(name: String): Boolean = false
         public override fun getOrNull(name: String): Any? = null
         public override fun <T : Any> getOrNull(type: KClass<T>): T? = null
-        public override fun <T : Any> getAll(type: KClass<T>): List<String> = emptyList()
+        public override fun <T : Any> getAll(type: KClass<T>?): List<String> = emptyList()
     }
 }
 
