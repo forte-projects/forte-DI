@@ -117,6 +117,13 @@ public interface BeanContainer {
 public inline fun <reified T : Any> BeanContainer.all(): List<String> = getAll(T::class)
 public inline fun <reified T : Any> BeanContainer.allInstance(): List<T> = T::class.let { type -> getAll(type).map { name -> get(name, type) } }
 
+@PublishedApi
+internal inline val NULL_TYPE: KClass<*>? get() = null
+
+public inline val BeanContainer.all: List<String> get() = this.getAll(NULL_TYPE)
+public inline val BeanContainer.allInstance: List<Any> get() = all.map(::get)
+
+
 
 
 /**
