@@ -269,8 +269,8 @@ private class SimpleClassDefinition<T : Any>(
                 }
                 when {
                     // 构造函数不唯一，但是没有任何标记@Inject的构造函数。
-                    needInjects.isEmpty() -> throw IllegalStateException("Constructors are not unique, but there are no constructors marked @Inject or its extensions.")
-                    needInjects.size != 1 -> throw IllegalStateException("Constructors are not unique, but there is more than one constructor marked with @Inject or its extensions.")
+                    needInjects.isEmpty() -> throw IllegalStateException("Constructors of type [$type] are not unique, but there are no constructors marked @Inject or its extensions.")
+                    needInjects.size != 1 -> throw IllegalStateException("Constructors of type [$type] are not unique, but there is more than one constructor marked with @Inject or its extensions.")
                     else -> needInjects.first()
                 }
             }
