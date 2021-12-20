@@ -12,7 +12,7 @@ public open class NoSuchBeanException : BeansException {
     public constructor(cause: Throwable?) : super(cause)
 }
 
-public inline fun noSuchBeanDefine(name: () -> String): Nothing {
+public inline fun noSuchBeanDefine(e: Throwable? = null, name: () -> String): Nothing {
     val n = name()
-    throw NoSuchBeanException("named $n")
+    throw NoSuchBeanException("named $n", e)
 }

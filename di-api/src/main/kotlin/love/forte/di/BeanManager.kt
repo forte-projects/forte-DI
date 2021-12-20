@@ -108,8 +108,24 @@ public interface BeanContainer {
     /**
      * 得到此名称对应Bean的类型。
      */
-    public fun getType(name: String): KClass<*> = TODO()
+    public fun getType(name: String): KClass<*> = getTypeOrNull(name) ?: noSuchBeanDefine { name }
 
+    /**
+     * 根据一个Bean的唯一限定名称获取其对应的bean类型，如果没有此bean则得到null。
+     */
+    public fun getTypeOrNull(name: String): KClass<*>?
+
+    /**
+     * 得到此名称对应Bean的类型。
+     */
+    @Api4J
+    public fun getTypeClass(name: String): Class<*> = getTypeClassOrNull(name) ?: noSuchBeanDefine { name }
+
+    /**
+     * 根据一个Bean的唯一限定名称获取其对应的bean类型，如果没有此bean则得到null。
+     */
+    @Api4J
+    public fun getTypeClassOrNull(name: String): Class<*>? = getTypeOrNull(name)?.java
 
 
     public companion object Empty : BeanContainer {
@@ -117,20 +133,21 @@ public interface BeanContainer {
         public override fun getOrNull(name: String): Any? = null
         public override fun <T : Any> getOrNull(type: KClass<T>): T? = null
         public override fun <T : Any> getAll(type: KClass<T>?): List<String> = emptyList()
+        override fun getTypeOrNull(name: String): KClass<*>? = null
     }
 }
 
 
 public inline fun <reified T : Any> BeanContainer.all(): List<String> = getAll(T::class)
-public inline fun <reified T : Any> BeanContainer.allInstance(): List<T> = T::class.let { type -> getAll(type).map { name -> get(name, type) } }
+public inline fun <reified T : Any> BeanContainer.allInstance(): List<T> =
+    T::class.let { type -> getAll(type).map { name -> get(name, type) } }
 
 @PublishedApi
-internal inline val NULL_TYPE: KClass<*>? get() = null
+internal inline val NULL_TYPE: KClass<*>?
+    get() = null
 
 public inline val BeanContainer.all: List<String> get() = this.getAll(NULL_TYPE)
 public inline val BeanContainer.allInstance: List<Any> get() = all.map(::get)
-
-
 
 
 /**

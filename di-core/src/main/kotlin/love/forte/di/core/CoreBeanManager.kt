@@ -19,6 +19,7 @@ public interface CoreBeanManager : BeanManager {
     override fun getOrNull(name: String): Any?
     override fun <T : Any> getAll(type: KClass<T>?): List<String>
     override fun <T : Any> getOrNull(type: KClass<T>): T?
+    override fun getTypeOrNull(name: String): KClass<*>?
 
     public companion object {
         @JvmStatic

@@ -147,6 +147,10 @@ internal class CoreBeanManagerImpl(
 
     }
 
+    override fun getTypeOrNull(name: String): KClass<*>? {
+        return locker.read { nameBeanMap[name]?.type }
+    }
+
     override fun <T : Any> getAll(type: KClass<T>?): List<String> {
         return locker.read {
             if (type == null) nameBeanMap.keys().toList()

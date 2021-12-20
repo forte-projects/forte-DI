@@ -1,9 +1,6 @@
 package love.forte.di.spring.internal
 
-import love.forte.di.Api4J
-import love.forte.di.Bean
-import love.forte.di.MultiSameTypeBeanException
-import love.forte.di.NoSuchBeanException
+import love.forte.di.*
 import love.forte.di.spring.SpringBeanContainer
 import love.forte.di.spring.SpringBeanManager
 import org.springframework.beans.factory.ListableBeanFactory
@@ -135,4 +132,28 @@ internal class SpringApplicationContextContainer(
     }
 
 
+
+    @OptIn(Api4J::class)
+    override fun getTypeOrNull(name: String): KClass<*>? = getTypeClassOrNull(name)?.kotlin
+
+    @OptIn(Api4J::class)
+    override fun getType(name: String): KClass<*> = getTypeClass(name).kotlin
+
+    @Api4J
+    override fun getTypeClassOrNull(name: String): Class<*>? {
+        return try {
+            listableBeanFactory.getType(name)
+        } catch (e: NoSuchBeanDefinitionException) {
+            null
+        }
+    }
+
+    @Api4J
+    override fun getTypeClass(name: String): Class<*> {
+        return try {
+            super.getTypeClass(name)
+        } catch (e: NoSuchBeanDefinitionException) {
+            noSuchBeanDefine(e) { name }
+        }
+    }
 }
