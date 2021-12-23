@@ -61,4 +61,8 @@ public annotation class BeansFactory(
 @Component // for spring
 @ConditionalOnMissingBean  // for spring
 @Beans(priority = Int.MAX_VALUE)
-public annotation class SpareBean
+@Deprecated("尚未做好支持")
+public annotation class SpareBean(
+    // @get:AliasFor(annotation = ConditionalOnMissingBean::class, attribute = "value")
+    // vararg val value: KClass<*>
+)
