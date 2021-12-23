@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.AliasFor
 import org.springframework.stereotype.Component
 import javax.inject.Named
+import kotlin.reflect.KClass
 
 /**
  * 标记一个类或一个类下的有返回值的方法或一个属性（的getter）上，代表将其记录在bean管理器中。
@@ -60,9 +61,10 @@ public annotation class BeansFactory(
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER)
 @Component // for spring
 @ConditionalOnMissingBean  // for spring
-@Beans(priority = Int.MAX_VALUE)
-@Deprecated("尚未做好支持")
 public annotation class SpareBean(
-    // @get:AliasFor(annotation = ConditionalOnMissingBean::class, attribute = "value")
-    // vararg val value: KClass<*>
+
+    /**
+     */
+    @get:AliasFor(annotation = ConditionalOnMissingBean::class, attribute = "value")
+    vararg val value: KClass<*>
 )

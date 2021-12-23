@@ -16,7 +16,6 @@ import love.forte.annotationtool.AnnotationMapper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.core.annotation.AliasFor
 import javax.inject.Inject
-import javax.inject.Named
 
 
 /**
@@ -27,6 +26,8 @@ import javax.inject.Named
     AnnotationTarget.CONSTRUCTOR,
     AnnotationTarget.FIELD,
     AnnotationTarget.PROPERTY,
+    AnnotationTarget.PROPERTY_GETTER,
+    AnnotationTarget.PROPERTY_SETTER,
     AnnotationTarget.VALUE_PARAMETER,
 )
 @MustBeDocumented
@@ -40,7 +41,7 @@ public annotation class Depend(
     /**
      * 是否为必须的。如果 [required] 为 false，且在无法断定其最终目标的时候尝试为其注入一个 `null`.
      */
-    @Deprecated("无效?")
+    @get:AliasFor(annotation = Autowired::class, attribute = "required")
     val required: Boolean = true
 
 )

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component
 
 private fun getMyAutowiredAnnotationBeanPostProcessor(): AutowiredAnnotationBeanPostProcessor =
     AutowiredAnnotationBeanPostProcessor().also {
+        it.setRequiredParameterName("required")
         it.setAutowiredAnnotationType(Depend::class.java)
     }
 
@@ -16,10 +17,6 @@ private fun getMyAutowiredAnnotationBeanPostProcessor(): AutowiredAnnotationBean
  * @author ForteScarlet
  */
 @Component
-// @Configuration
 open class AutowiredConfig :
     SmartInstantiationAwareBeanPostProcessor
-    by getMyAutowiredAnnotationBeanPostProcessor() {
-
-
-}
+    by getMyAutowiredAnnotationBeanPostProcessor()
