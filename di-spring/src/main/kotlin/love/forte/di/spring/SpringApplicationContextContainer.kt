@@ -1,8 +1,7 @@
-package love.forte.di.spring.internal
+package love.forte.di.spring
 
 import love.forte.di.*
-import love.forte.di.spring.SpringBeanContainer
-import love.forte.di.spring.SpringBeanManager
+import love.forte.di.spring.internal.toBeanDefinition
 import org.springframework.beans.factory.ListableBeanFactory
 import org.springframework.beans.factory.NoSuchBeanDefinitionException
 import org.springframework.beans.factory.NoUniqueBeanDefinitionException
@@ -16,7 +15,7 @@ import kotlin.reflect.KClass
  *
  * @author ForteScarlet
  */
-internal class SpringApplicationContextContainer(
+public class SpringApplicationContextContainer(
     override val beanDefinitionRegistry: BeanDefinitionRegistry,
     override val listableBeanFactory: ListableBeanFactory,
 ) : SpringBeanManager {
