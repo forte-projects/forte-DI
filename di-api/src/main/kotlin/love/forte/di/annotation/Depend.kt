@@ -13,8 +13,6 @@
 package love.forte.di.annotation
 
 import love.forte.annotationtool.AnnotationMapper
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.core.annotation.AliasFor
 import javax.inject.Inject
 
 
@@ -31,17 +29,18 @@ import javax.inject.Inject
     AnnotationTarget.VALUE_PARAMETER,
 )
 @MustBeDocumented
-@Autowired
 @AnnotationMapper(value = [Inject::class]) // support in forte-di only.
 public annotation class Depend(
 
+    /**
+     * 无效的参数。
+     */
     @Deprecated("Use @Named(...)")
     val name: String = "",
 
     /**
      * 是否为必须的。如果 [required] 为 false，且在无法断定其最终目标的时候尝试为其注入一个 `null`.
      */
-    @get:AliasFor(annotation = Autowired::class, attribute = "required")
     val required: Boolean = true
 
 )

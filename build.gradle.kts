@@ -8,7 +8,7 @@ plugins {
 }
 
 val g = "love.forte.di"
-val v = "0.0.2"
+val v = "0.0.3"
 
 group = g
 version = v
